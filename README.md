@@ -2,7 +2,7 @@
 
 A deployed machine learning application that predicts histological inflammation severity in ulcerative colitis from quantitative tissue features. Built as a full end-to-end ML deployment project — from raw research code to a containerised, publicly accessible web service.
 
-**Live demo:** `[your-render-url-here]`
+**Live demo:** `https://uc-inflammation-predictor.onrender.com`
 
 ---
 
