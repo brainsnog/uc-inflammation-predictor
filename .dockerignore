@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Raw data — never ships with the image
+*.xlsx
+*.csv
+*.xls
+
+# Training script — not needed at runtime
+train.py
+
+# Dev / IDE
+.env
+.env.*
+.vscode/
+.idea/
+*.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Docs
+README.md

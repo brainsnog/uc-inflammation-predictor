@@ -1,0 +1,28 @@
+# ── Raw data — never commits ──────────────────────────────
+*.xlsx
+*.csv
+*.xls
+
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# ── Virtual environments ──────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── Environment variables ─────────────────────────────────
+.env
+.env.*
+
+# ── OS / IDE ──────────────────────────────────────────────
+.DS_Store
+.vscode/
+.idea/
+
+# ── NOTE: models/*.pkl ARE committed intentionally ────────
+# The serialized model files are small (<50MB) and required
+# for the app to run. They contain no patient data.

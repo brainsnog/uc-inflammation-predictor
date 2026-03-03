@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UC Inflammation Severity Predictor</title>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         JARVIS DESIGN SYSTEM — STARK BIOSCAN INTERFACE
+         Cosmetic overhaul only. All functional logic preserved.
+    ════════════════════════════════════════════════════════════ -->
+
+    <!-- Google Fonts: Orbitron (display) · Rajdhani (body) · Share Tech Mono (data) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+
+        /* ═══════════════════════════════════════════════════
+           STEP 2 — DESIGN SYSTEM: CSS VARIABLES
+        ════════════════════════════════════════════════════ */
+        :root {
+            /* Backgrounds */
+            --bg-void:            #020912;
+            --bg-panel:           #050e1f;
+            --bg-panel-raised:    #071526;
+            --bg-row:             #040c1a;
+            --bg-input:           #030b18;
+
+            /* Primary accent — Stark Cyan */
+            --cyan:               #00d4ff;
+            --cyan-dim:           #0099bb;
+            --cyan-ghost:         rgba(0, 212, 255, 0.07);
+            --cyan-glow-sm:       0 0 8px  rgba(0, 212, 255, 0.55);
+            --cyan-glow-md:       0 0 20px rgba(0, 212, 255, 0.35);
+            --cyan-glow-lg:       0 0 45px rgba(0, 212, 255, 0.18);
+
+            /* Secondary accent — Arc Blue */
+            --blue:               #0066ff;
+            --blue-glow:          0 0 20px rgba(0, 102, 255, 0.3);
+
+            /* Severity spectrum */
+            --sev-0:              #00ff88;
+            --sev-1:              #7fff00;
+            --sev-2:              #ffd700;
+            --sev-3:              #ff8c00;
+            --sev-4:              #ff3300;
+            --sev-5:              #ff0040;
+
+            /* Binary classification */
+            --inflamed:           #ff2050;
+            --inflamed-bg:        rgba(255, 32, 80, 0.08);
+            --inflamed-glow:      0 0 18px rgba(255, 32, 80, 0.45);
+            --not-inflamed:       #00ff88;
+            --not-inflamed-bg:    rgba(0, 255, 136, 0.08);
+            --not-inflamed-glow:  0 0 18px rgba(0, 255, 136, 0.45);
+
+            /* Text */
+            --text-primary:       #cce8ff;
+            --text-secondary:     #4a7a96;
+            --text-data:          #00d4ff;
+            --text-dim:           #1e3a50;
+
+            /* Borders */
+            --border-panel:       rgba(0, 212, 255, 0.16);
+            --border-bright:      rgba(0, 212, 255, 0.55);
+            --border-input:       rgba(0, 212, 255, 0.18);
+            --border-focus:       rgba(0, 212, 255, 0.85);
+
+            /* Structure */
+            --radius:             2px;
+            --t-fast:             120ms ease-out;
+            --t-med:              220ms ease-out;
+
+            /* Fonts */
+            --font-display:       'Orbitron', sans-serif;
+            --font-body:          'Rajdhani', sans-serif;
+            --font-data:          'Share Tech Mono', monospace;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 3A — BASE RESET & BODY
+        ════════════════════════════════════════════════════ */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-void);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            cursor: crosshair;
+        }
+
+        /* ── Background: arc reactor ambient radial glow ── */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(
+                ellipse 70% 55% at 50% 40%,
+                rgba(0, 102, 255, 0.055) 0%,
+                transparent 70%
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Background: HUD grid overlay ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 212, 255, 0.028) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.028) 1px, transparent 1px);
+            background-size: 44px 44px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Scanline drift — ambient atmosphere ── */
+        .scanline {
+            position: fixed;
+            top: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(0, 212, 255, 0.12) 30%,
+                rgba(0, 212, 255, 0.22) 50%,
+                rgba(0, 212, 255, 0.12) 70%,
+                transparent 100%
+            );
+            animation: scanline-drift 9s linear infinite;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        @keyframes scanline-drift {
+            0%   { top: -2px;   opacity: 0; }
+            3%   { opacity: 1; }
+            97%  { opacity: 1; }
+            100% { top: 100vh; opacity: 0; }
+        }
+
+        /* All content sits above background layers */
+        header, .layout, .boot-overlay {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 3B — BOOT OVERLAY (page load animation)
+        ════════════════════════════════════════════════════ */
+        .boot-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-void);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: boot-fade 0.4s ease-out 1.2s forwards;
+            pointer-events: none;
+        }
+
+        .boot-overlay::before {
+            content: 'INITIALISING BIOSCAN SYSTEM...';
+            font-family: var(--font-display);
+            font-size: 0.65rem;
+            letter-spacing: 0.35em;
+            color: var(--cyan);
+            opacity: 0;
+            animation: boot-text 1.1s ease-out 0.1s forwards;
+        }
+
+        @keyframes boot-text {
+            0%   { opacity: 0; transform: translateY(4px); }
+            30%  { opacity: 1; transform: translateY(0); }
+            80%  { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes boot-fade {
+            to { opacity: 0; pointer-events: none; }
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 4A — HEADER
+        ════════════════════════════════════════════════════ */
+        header {
+            background: var(--bg-panel);
+            border-top: 2px solid var(--cyan);
+            border-bottom: 1px solid var(--border-panel);
+            padding: 18px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5), var(--cyan-glow-lg);
+            animation: header-drop 0.5s ease-out 1.3s both;
+        }
+
+        @keyframes header-drop {
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        /* Animated status indicator */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--cyan);
+            box-shadow: var(--cyan-glow-sm);
+            animation: status-pulse 2.5s ease-in-out infinite;
+        }
+
+        @keyframes status-pulse {
+            0%, 100% { opacity: 1;   transform: scale(1);    box-shadow: var(--cyan-glow-sm); }
+            50%       { opacity: 0.5; transform: scale(0.75); box-shadow: none; }
+        }
+
+        .status-label {
+            font-family: var(--font-body);
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            color: var(--cyan);
+            text-transform: uppercase;
+        }
+
+        /* Vertical divider */
+        .header-divider {
+            width: 1px;
+            height: 32px;
+            background: var(--border-panel);
+            flex-shrink: 0;
+        }
+
+        .header-titles h1 {
+            font-family: var(--font-display);
+            font-size: 1.0rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            line-height: 1.2;
+        }
+
+        .header-titles p {
+            font-family: var(--font-body);
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.06em;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .header-badge {
+            font-family: var(--font-body);
+            font-size: 0.62rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-panel);
+            padding: 4px 10px;
+            border-radius: var(--radius);
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 3C — LAYOUT GRID
+        ════════════════════════════════════════════════════ */
+        .layout {
+            max-width: 1120px;
+            margin: 28px auto;
+            padding: 0 24px;
+            display: grid;
+            grid-template-columns: 1fr 390px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 3B — PANEL SYSTEM (replaces .card)
+        ════════════════════════════════════════════════════ */
+        .card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-panel);
+            border-radius: var(--radius);
+            padding: 26px;
+            position: relative;
+            transition: border-color var(--t-med), box-shadow var(--t-med);
+            animation: panel-rise 0.55s ease-out both;
+        }
+
+        .card:hover {
+            border-color: rgba(0, 212, 255, 0.28);
+            box-shadow: var(--cyan-glow-lg);
+        }
+
+        /* Staggered boot animation */
+        .card:nth-child(1) { animation-delay: 1.45s; }
+        .card-right-1      { animation-delay: 1.6s; }
+        .card-right-2      { animation-delay: 1.75s; }
+
+        @keyframes panel-rise {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Corner bracket — top-left */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: -1px;
+            width: 16px; height: 16px;
+            border-top: 2px solid var(--cyan);
+            border-left: 2px solid var(--cyan);
+            pointer-events: none;
+        }
+
+        /* Corner bracket — bottom-right */
+        .card::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; right: -1px;
+            width: 16px; height: 16px;
+            border-bottom: 2px solid var(--cyan);
+            border-right: 2px solid var(--cyan);
+            pointer-events: none;
+        }
+
+        /* Panel heading */
+        .card h2 {
+            font-family: var(--font-display);
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: var(--cyan);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-panel);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        /* Thin top accent line inside panel heading */
+        .card h2::before {
+            display: none; /* corner brackets handle decoration */
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 4B — FEATURE INPUT GRID
+        ════════════════════════════════════════════════════ */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .feature-field {
+            position: relative;
+            padding: 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-input);
+            border-radius: var(--radius);
+            transition: border-color var(--t-fast), box-shadow var(--t-fast);
+        }
+
+        .feature-field:hover {
+            border-color: rgba(0, 212, 255, 0.32);
+        }
+
+        .feature-field label {
+            display: block;
+            font-family: var(--font-body);
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .feature-field .desc {
+            font-family: var(--font-body);
+            font-size: 0.7rem;
+            font-weight: 400;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+            line-height: 1.45;
+        }
+
+        .feature-field input {
+            width: 100%;
+            padding: 7px 10px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border-input);
+            font-family: var(--font-data);
+            font-size: 0.88rem;
+            color: var(--text-data);
+            transition: border-color var(--t-fast), box-shadow var(--t-fast);
+            outline: none;
+            border-radius: 0;
+        }
+
+        .feature-field input::placeholder {
+            color: var(--text-dim);
+        }
+
+        .feature-field input:focus {
+            border-bottom-color: var(--cyan);
+            box-shadow: 0 2px 8px rgba(0, 212, 255, 0.2);
+        }
+
+        .feature-field:focus-within {
+            border-color: rgba(0, 212, 255, 0.4);
+            box-shadow: var(--cyan-glow-sm);
+        }
+
+        /* Remove browser number input spinners */
+        .feature-field input[type=number]::-webkit-inner-spin-button,
+        .feature-field input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+        .feature-field input[type=number] { -moz-appearance: textfield; }
+
+        .unit-tag {
+            display: inline-block;
+            font-family: var(--font-data);
+            font-size: 0.62rem;
+            color: var(--text-dim);
+            letter-spacing: 0.06em;
+            margin-top: 5px;
+            text-transform: uppercase;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 4E — SUBMIT BUTTON
+        ════════════════════════════════════════════════════ */
+        .btn-predict {
+            margin-top: 20px;
+            width: 100%;
+            padding: 13px;
+            background: transparent;
+            color: var(--cyan);
+            border: 1px solid var(--cyan);
+            border-radius: var(--radius);
+            font-family: var(--font-display);
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            cursor: crosshair;
+            transition: background var(--t-fast), box-shadow var(--t-fast), color var(--t-fast);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-predict::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--cyan-ghost);
+            opacity: 0;
+            transition: opacity var(--t-fast);
+        }
+
+        .btn-predict:hover {
+            background: var(--cyan-ghost);
+            box-shadow: var(--cyan-glow-md), inset 0 0 20px rgba(0, 212, 255, 0.05);
+        }
+
+        .btn-predict:active {
+            background: rgba(0, 212, 255, 0.14);
+            box-shadow: var(--cyan-glow-sm);
+        }
+
+        .btn-predict:disabled {
+            color: var(--text-dim);
+            border-color: var(--text-dim);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 4F — ERROR MESSAGE
+        ════════════════════════════════════════════════════ */
+        .error-msg {
+            background: rgba(255, 32, 80, 0.07);
+            border: 1px solid rgba(255, 32, 80, 0.4);
+            color: var(--inflamed);
+            padding: 12px 14px;
+            border-radius: var(--radius);
+            font-family: var(--font-body);
+            font-size: 0.8rem;
+            letter-spacing: 0.04em;
+            margin-top: 14px;
+            display: none;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 4B — RESULT PANEL
+        ════════════════════════════════════════════════════ */
+        /* Hidden until prediction fires — preserved from original */
+        #result-panel { display: none; }
+
+        .result-main {
+            text-align: center;
+            padding: 24px 0 22px;
+            border-bottom: 1px solid var(--border-panel);
+            margin-bottom: 18px;
+            position: relative;
+        }
+
+        /* Decorative scan ring behind score */
+        .result-main::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -55%);
+            width: 110px;
+            height: 110px;
+            border: 1px solid var(--border-panel);
+            border-radius: 50%;
+            animation: ring-breathe 3s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes ring-breathe {
+            0%, 100% { opacity: 0.4; transform: translate(-50%, -55%) scale(1); }
+            50%       { opacity: 0.8; transform: translate(-50%, -55%) scale(1.04); }
+        }
+
+        /* The big severity number */
+        .severity-score {
+            font-family: var(--font-data);
+            font-size: 3.8rem;
+            font-weight: 400;
+            line-height: 1;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+            /* colour applied by score-N class */
+        }
+
+        .severity-label {
+            font-family: var(--font-display);
+            font-size: 0.62rem;
+            font-weight: 600;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 18px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Binary classification badge */
+        .binary-badge {
+            display: inline-block;
+            padding: 6px 20px;
+            border-radius: var(--radius);
+            font-family: var(--font-display);
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Preserved class names — JS depends on these ── */
+        .badge-inflamed {
+            background: var(--inflamed-bg);
+            color: var(--inflamed);
+            border: 1px solid var(--inflamed);
+            box-shadow: var(--inflamed-glow);
+        }
+
+        .badge-not-inflamed {
+            background: var(--not-inflamed-bg);
+            color: var(--not-inflamed);
+            border: 1px solid var(--not-inflamed);
+            box-shadow: var(--not-inflamed-glow);
+        }
+
+        /* ── Detail rows ── */
+        .result-details { display: grid; gap: 8px; }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.82rem;
+            padding: 9px 12px;
+            background: var(--bg-row);
+            border: 1px solid var(--border-panel);
+            border-radius: var(--radius);
+            border-left: 2px solid var(--border-panel);
+            transition: border-left-color var(--t-fast), background var(--t-fast);
+        }
+
+        .detail-row:hover {
+            background: var(--bg-panel-raised);
+            border-left-color: var(--cyan);
+        }
+
+        .detail-row .label {
+            font-family: var(--font-body);
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .detail-row .value {
+            font-family: var(--font-data);
+            font-size: 0.82rem;
+            color: var(--text-data);
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 2I — SEGMENTED CONFIDENCE BAR
+        ════════════════════════════════════════════════════ */
+        .confidence-bar-wrap {
+            margin-top: 6px;
+            display: flex;
+            gap: 2px;
+            height: 8px;
+            width: 100%;
+        }
+
+        .conf-segment {
+            flex: 1;
+            background: var(--bg-panel-raised);
+            border-radius: 1px;
+            transition: background 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        .conf-segment.active-low  {
+            background: var(--not-inflamed);
+            box-shadow: 0 0 4px rgba(0, 255, 136, 0.5);
+        }
+        .conf-segment.active-mid  {
+            background: var(--sev-2);
+            box-shadow: 0 0 4px rgba(255, 215, 0, 0.5);
+        }
+        .conf-segment.active-high {
+            background: var(--inflamed);
+            box-shadow: 0 0 4px rgba(255, 32, 80, 0.5);
+        }
+
+        /* ── Original bar preserved for JS compatibility — hidden ── */
+        .confidence-bar { display: none; }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 4C — MODEL PERFORMANCE TABLE
+        ════════════════════════════════════════════════════ */
+        .perf-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+
+        .perf-table thead tr {
+            border-bottom: 1px solid var(--border-panel);
+        }
+
+        .perf-table th {
+            font-family: var(--font-display);
+            font-size: 0.58rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            padding: 8px 10px;
+            text-align: left;
+        }
+
+        .perf-table td {
+            font-family: var(--font-body);
+            font-size: 0.8rem;
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.05);
+            color: var(--text-primary);
+            transition: background var(--t-fast), border-left-color var(--t-fast);
+            border-left: 2px solid transparent;
+        }
+
+        .perf-table tr:hover td {
+            background: var(--bg-panel-raised);
+            border-left-color: var(--cyan);
+        }
+
+        .perf-table tr:last-child td { border-bottom: none; }
+
+        /* Metric value highlight */
+        .metric-highlight {
+            font-family: var(--font-data);
+            font-size: 0.8rem;
+            color: var(--cyan);
+            font-weight: 400;
+        }
+
+        /* Model tag / winner badge */
+        .model-tag {
+            display: inline-block;
+            font-family: var(--font-body);
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: var(--radius);
+        }
+
+        .tag-winner {
+            background: rgba(0, 212, 255, 0.08);
+            color: var(--cyan);
+            border: 1px solid var(--border-panel);
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 4B — INFO BLOCK
+        ════════════════════════════════════════════════════ */
+        .info-block {
+            font-family: var(--font-body);
+            font-size: 0.76rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            padding: 14px;
+            background: var(--bg-row);
+            border: 1px solid var(--border-panel);
+            border-left: 2px solid var(--border-panel);
+            border-radius: var(--radius);
+            margin-top: 16px;
+        }
+
+        .info-block strong {
+            font-family: var(--font-body);
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 5A — SCORE COLOUR SCALE
+           !! PRESERVED class names — JS scoreClass() depends on these !!
+        ════════════════════════════════════════════════════ */
+        .score-0 { color: var(--sev-0); text-shadow: 0 0 18px var(--sev-0); }
+        .score-1 { color: var(--sev-1); text-shadow: 0 0 18px var(--sev-1); }
+        .score-2 { color: var(--sev-2); text-shadow: 0 0 18px var(--sev-2); }
+        .score-3 { color: var(--sev-3); text-shadow: 0 0 18px var(--sev-3); }
+        .score-4 { color: var(--sev-4); text-shadow: 0 0 18px var(--sev-4); }
+        .score-5 { color: var(--sev-5); text-shadow: 0 0 18px var(--sev-5); }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 5 — LOADING SPINNER (restyled)
+        ════════════════════════════════════════════════════ */
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(0, 212, 255, 0.2);
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ═══════════════════════════════════════════════════
+           STEP 5B — PANEL BREATHE ANIMATION
+        ════════════════════════════════════════════════════ */
+        @keyframes panel-breathe {
+            0%, 100% { border-color: var(--border-panel); }
+            50%       { border-color: rgba(0, 212, 255, 0.3); }
+        }
+
+        .card { animation: panel-rise 0.55s ease-out both, panel-breathe 5s ease-in-out 3s infinite; }
+
+        /* ═══════════════════════════════════════════════════
+           RESPONSIVE
+        ════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            .layout          { grid-template-columns: 1fr; }
+            .feature-grid    { grid-template-columns: 1fr; }
+            header           { padding: 14px 20px; flex-wrap: wrap; }
+            .header-right    { display: none; }
+            .layout          { padding: 0 14px; margin: 16px auto; }
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- Scanline atmosphere effect -->
+<div class="scanline"></div>
+
+<!-- Boot overlay — fades out after 1.2s -->
+<div class="boot-overlay"></div>
+
+<!-- ═══════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════ -->
+<header>
+    <div class="header-left">
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span class="status-label">System Active</span>
+        </div>
+        <div class="header-divider"></div>
+        <div class="header-titles">
+            <h1>UC Histological Inflammation Severity Predictor</h1>
+            <p>Random Forest &nbsp;·&nbsp; 8 Quantitative Tissue Features &nbsp;·&nbsp; Patient-Level Cross-Validated &nbsp;·&nbsp; 303 Assessments &nbsp;·&nbsp; 106 Patients</p>
+        </div>
+    </div>
+    <div class="header-right">
+        <span class="header-badge">v1.0.0</span>
+        <span class="header-badge">RF · BIOSCAN</span>
+    </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     MAIN LAYOUT
+════════════════════════════════════════════ -->
+<div class="layout">
+
+    <!-- ── LEFT: Feature input form ── -->
+    <div class="card">
+        <h2>Feature Input <span style="font-size:0.55rem; color: var(--text-secondary); letter-spacing:0.1em;">— 8 RF-SELECTED DESCRIPTORS</span></h2>
+        <form id="predict-form">
+            <div class="feature-grid" id="feature-fields">
+                <!-- Populated by JavaScript using feature metadata from server -->
+            </div>
+            <button type="submit" class="btn-predict" id="submit-btn">
+                &#9654;&nbsp;&nbsp;Run Prediction Analysis
+            </button>
+        </form>
+        <div class="error-msg" id="error-msg"></div>
+    </div>
+
+    <!-- ── RIGHT column ── -->
+    <div>
+
+        <!-- Prediction result panel (hidden until prediction fires) -->
+        <div class="card card-right-1" id="result-panel">
+            <h2>Prediction Result</h2>
+
+            <div class="result-main">
+                <div class="severity-score" id="res-score">—</div>
+                <div class="severity-label"  id="res-label">—</div>
+                <div class="binary-badge"    id="res-badge">—</div>
+            </div>
+
+            <div class="result-details">
+
+                <div class="detail-row">
+                    <span class="label">Continuous Severity (0–5)</span>
+                    <span class="value" id="res-continuous">—</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="label">Binary Classification</span>
+                    <span class="value" id="res-binary">—</span>
+                </div>
+
+                <!-- Inflamed probability row with segmented bar -->
+                <div class="detail-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                    <div style="display:flex; justify-content:space-between; width:100%">
+                        <span class="label">Inflamed Probability</span>
+                        <span class="value" id="res-prob">—</span>
+                    </div>
+                    <!-- Segmented power-cell bar (20 segments) -->
+                    <div class="confidence-bar-wrap" id="conf-segments" style="width:100%"></div>
+                    <!-- Original bar preserved for JS compat — hidden by CSS -->
+                    <div style="display:none; width:100%">
+                        <div class="confidence-bar" id="res-bar" style="width:0%;"></div>
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <span class="label">Threshold (inflamed if score ≥)</span>
+                    <span class="value">3.0</span>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Model performance card -->
+        <div class="card card-right-2" style="margin-top: 18px;">
+            <h2>Model Performance <span class="model-tag tag-winner">RF · RF-Selected Features</span></h2>
+
+            <table class="perf-table">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Metric</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Regression</td>
+                        <td>MAE</td>
+                        <td><span class="metric-highlight">0.684 ± 0.045</span></td>
+                    </tr>
+                    <tr>
+                        <td>Regression</td>
+                        <td>R²</td>
+                        <td><span class="metric-highlight">0.746 ± 0.037</span></td>
+                    </tr>
+                    <tr>
+                        <td>Binary Classification</td>
+                        <td>Accuracy</td>
+                        <td><span class="metric-highlight">0.924 ± 0.029</span></td>
+                    </tr>
+                    <tr>
+                        <td>Binary Classification</td>
+                        <td>ROC-AUC</td>
+                        <td><span class="metric-highlight">0.978 ± 0.008</span></td>
+                    </tr>
+                    <tr>
+                        <td>Binary Classification</td>
+                        <td>Sensitivity</td>
+                        <td><span class="metric-highlight">0.927 ± 0.045</span></td>
+                    </tr>
+                    <tr>
+                        <td>Binary Classification</td>
+                        <td>Specificity</td>
+                        <td><span class="metric-highlight">0.926 ± 0.064</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="info-block">
+                <strong>Validation:</strong> 5-fold patient-level GroupKFold cross-validation.
+                All observations from a given patient are assigned to the same fold,
+                preventing data leakage across longitudinal visits.<br><br>
+                <strong>Dataset:</strong> 303 histological assessments from 106 UC patients
+                across up to 3 timepoints. Features represent cell densities, spatial
+                co-localisation ratios, and regional variability across anatomical
+                regions of the colon.<br><br>
+                <strong>Features:</strong> 8 RF-importance-selected from 141 quantitative
+                descriptors. Non-linear RF importance selection outperformed both
+                LASSO-based and manual biology-informed selection strategies.
+            </div>
+        </div>
+
+    </div><!-- end right column -->
+</div><!-- end layout -->
+
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT
+     All original logic preserved exactly.
+     Additions: segmented bar builder, score count-up.
+════════════════════════════════════════════ -->
+<script>
+    // ── Feature metadata injected from FastAPI template context ──
+    // !! DO NOT MODIFY — Jinja2 template variables !!
+    const FEATURE_META = {{ feature_meta | tojson }};
+    const FEATURES     = {{ features | tojson }};
+
+    // ── Build input fields dynamically from feature metadata ──
+    // Original logic preserved exactly
+    const grid = document.getElementById('feature-fields');
+
+    FEATURES.forEach(feat => {
+        const meta = FEATURE_META[feat] || {};
+        const div  = document.createElement('div');
+        div.className = 'feature-field';
+        div.innerHTML = `
+            <label for="${feat}">${meta.label || feat}</label>
+            <div class="desc">${meta.description || ''}</div>
+            <input
+                type        = "number"
+                id          = "${feat}"
+                name        = "${feat}"
+                min         = "${meta.min ?? 0}"
+                max         = "${meta.max ?? ''}"
+                step        = "${meta.step ?? 0.001}"
+                placeholder = "0.000"
+                required
+            >
+            <span class="unit-tag">${meta.unit || ''}</span>
+        `;
+        grid.appendChild(div);
+    });
+
+    // ── Score → CSS class (original — preserved exactly) ──
+    function scoreClass(score) {
+        const s = Math.round(score);
+        return `score-${Math.min(Math.max(s, 0), 5)}`;
+    }
+
+    // ── Confidence bar colour (original — preserved exactly) ──
+    function barColour(prob) {
+        if (prob < 30) return '#68d391';
+        if (prob < 60) return '#f6ad55';
+        return '#fc8181';
+    }
+
+    // ── NEW: Build segmented confidence bar (20 power-cell segments) ──
+    const segContainer = document.getElementById('conf-segments');
+    const TOTAL_SEGMENTS = 20;
+    const segments = [];
+
+    for (let i = 0; i < TOTAL_SEGMENTS; i++) {
+        const seg = document.createElement('div');
+        seg.className = 'conf-segment';
+        segContainer.appendChild(seg);
+        segments.push(seg);
+    }
+
+    function updateSegmentedBar(prob) {
+        const filled = Math.round((prob / 100) * TOTAL_SEGMENTS);
+        segments.forEach((seg, i) => {
+            seg.className = 'conf-segment';
+            if (i < filled) {
+                if (prob < 30)      seg.classList.add('active-low');
+                else if (prob < 60) seg.classList.add('active-mid');
+                else                seg.classList.add('active-high');
+            }
+        });
+    }
+
+    // ── NEW: Score count-up animation ──
+    function animateScore(targetValue, element, cls) {
+        const duration = 800;
+        const steps    = 40;
+        const interval = duration / steps;
+        let   current  = 0;
+        const increment = targetValue / steps;
+
+        element.className = `severity-score ${cls}`;
+
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= targetValue) {
+                current = targetValue;
+                clearInterval(timer);
+            }
+            element.textContent = current.toFixed(2);
+        }, interval);
+    }
+
+    // ── Handle form submission (original logic preserved exactly) ──
+    document.getElementById('predict-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const btn      = document.getElementById('submit-btn');
+        const errorDiv = document.getElementById('error-msg');
+
+        // Loading state
+        btn.disabled  = true;
+        btn.innerHTML = '<span class="spinner"></span>Analysing...';
+        errorDiv.style.display = 'none';
+
+        // Collect feature values
+        const payload = {};
+        FEATURES.forEach(feat => {
+            payload[feat] = parseFloat(document.getElementById(feat).value);
+        });
+
+        try {
+            const response = await fetch('/predict', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || `Server error ${response.status}`);
+            }
+
+            const data = await response.json();
+            displayResult(data);
+
+        } catch (err) {
+            errorDiv.textContent   = `⚠ ${err.message}`;
+            errorDiv.style.display = 'block';
+        } finally {
+            btn.disabled  = false;
+            btn.innerHTML = '&#9654;&nbsp;&nbsp;Run Prediction Analysis';
+        }
+    });
+
+    // ── Render result (original logic preserved, animations added) ──
+    function displayResult(data) {
+        const panel = document.getElementById('result-panel');
+        panel.style.display = 'block';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        const score   = data.severity_score;
+        const scoreEl = document.getElementById('res-score');
+        const cls     = scoreClass(score);
+
+        // Animated count-up instead of instant set
+        animateScore(score, scoreEl, cls);
+
+        document.getElementById('res-label').textContent      = data.severity_label;
+        document.getElementById('res-continuous').textContent = `${score.toFixed(3)} / 5.000`;
+        document.getElementById('res-binary').textContent      = data.inflamed_label;
+        document.getElementById('res-prob').textContent        = `${data.inflamed_prob}%`;
+
+        // Badge
+        const badge = document.getElementById('res-badge');
+        badge.textContent = data.inflamed_label;
+        badge.className   = `binary-badge ${data.is_inflamed ? 'badge-inflamed' : 'badge-not-inflamed'}`;
+
+        // Original confidence bar (hidden, kept for JS compat)
+        const bar = document.getElementById('res-bar');
+        bar.style.width      = `${data.inflamed_prob}%`;
+        bar.style.background = barColour(data.inflamed_prob);
+
+        // NEW: Segmented bar
+        setTimeout(() => updateSegmentedBar(data.inflamed_prob), 100);
+    }
+</script>
+
+</body>
+</html>
